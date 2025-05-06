@@ -10,6 +10,7 @@ __version__ = "3.0.0b20"
 # ---------------------------------------------------------------------------- #
 PACKAGE_DIR = Path(__file__).parent.resolve()
 PACKAGE_ASSET_DIR = PACKAGE_DIR / "assets"
+MANISKILL_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Non-package data
 ASSET_DIR = Path(
     os.path.join(
