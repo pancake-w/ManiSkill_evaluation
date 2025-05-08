@@ -1,34 +1,28 @@
-from collections import defaultdict
 import json
 import os
 import signal
 import time
-import numpy as np
-from typing import Annotated, Optional
-
+import tyro
 import torch
-from pathlib import Path
-from mani_skill.utils import common
-from mani_skill.utils import visualization
-from mani_skill.utils.visualization.misc import images_to_video
-from mani_skill.utils.geometry.rotation_conversions import matrix_to_euler_angles
-signal.signal(signal.SIGINT, signal.SIG_DFL)  # allow ctrl+c
-
-import gymnasium as gym
 import numpy as np
 from PIL import Image
-from mani_skill.envs.sapien_env import BaseEnv
-import tyro
+import gymnasium as gym
+from pathlib import Path
 from dataclasses import dataclass
+from typing import Annotated, Optional
+from collections import defaultdict
+from mani_skill.utils import visualization
+from mani_skill.envs.sapien_env import BaseEnv
+from mani_skill.utils.visualization.misc import images_to_video
+from mani_skill.utils.geometry.rotation_conversions import matrix_to_euler_angles
 from mani_skill import MANISKILL_ROOT_DIR
+
+signal.signal(signal.SIGINT, signal.SIG_DFL)  # allow ctrl+c
 
 @dataclass
 class Args:
     """
-    This is a script to evaluate policies on real2sim environments. Example command to run:
-
-    XLA_PYTHON_CLIENT_PREALLOCATE=false python real2sim_eval_maniskill3.py \
-        --model="octo-small" -e "PutEggplantInBasketScene-v1" -s 0 --num-episodes 192 --num-envs 64
+    This is a script to evaluate policies on real2sim environments.
     """
 
     env_id: Annotated[str, tyro.conf.arg(aliases=["-e"])] = "TabletopPickPlaceEnv-v1"
@@ -62,9 +56,6 @@ class Args:
     seed: Annotated[int, tyro.conf.arg(aliases=["-s"])] = 0
     """Seed the model and environment. Default seed is 0"""
 
-    reset_by_episode_id: bool = True
-    """Whether to reset by fixed episode ids instead of random sampling initial states."""
-
     info_on_video: bool = False
     """Whether to write info text onto the video"""
 
@@ -79,13 +70,9 @@ class Args:
 
     obs_normalize_params_path: str = ""
 
-    debug: bool = False
-
     container_name: Optional[str] = None
 
     object_name: Optional[str] = None
-
-    action_scale: float = 1.0
 
 def main():
     args = tyro.cli(Args)
@@ -292,7 +279,6 @@ def main():
     mean_metrics["total_episodes"] = eps_count
     mean_metrics["total_steps"] = eps_count * args.max_episode_len
     mean_metrics["time/episodes_per_second"] = eps_count / timers["total"]
-    mean_metrics["action_scale"] = args.action_scale
 
     metrics_path = exp_vis_dir / f"eval_metrics.json"
     json.dump(mean_metrics, open(metrics_path, "w"), indent=4)
