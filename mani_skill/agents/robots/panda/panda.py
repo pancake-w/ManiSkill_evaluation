@@ -121,11 +121,14 @@ class Panda(BaseAgent):
             force_limit=self.arm_force_limit,
             ee_link=self.ee_link_name,
             urdf_path=self.urdf_path,
+            normalize_action=False, # BingwenWei Modified on 2025'4'24, official default config is True
         )
         arm_pd_ee_pose = PDEEPoseControllerConfig(
             joint_names=self.arm_joint_names,
-            pos_lower=None,
-            pos_upper=None,
+            pos_lower=-np.inf,
+            pos_upper=np.inf,
+            rot_lower=-np.inf,
+            rot_upper=np.inf,
             stiffness=self.arm_stiffness,
             damping=self.arm_damping,
             force_limit=self.arm_force_limit,
@@ -181,7 +184,8 @@ class Panda(BaseAgent):
             stiffness=self.gripper_stiffness,
             damping=self.gripper_damping,
             force_limit=self.gripper_force_limit,
-            mimic={"panda_finger_joint2": {"joint": "panda_finger_joint1"}},
+            normalize_action=True,
+            drive_mode="force",
         )
 
         controller_configs = dict(
@@ -233,6 +237,11 @@ class Panda(BaseAgent):
         self.tcp = sapien_utils.get_obj_by_name(
             self.robot.get_links(), self.ee_link_name
         )
+
+    @property
+    def ee_pose_at_robot_base(self): # in robot frame(root frame)
+        to_base = self.robot.pose.inv()
+        return to_base * (self.tcp.pose)    
 
     def is_grasping(self, object: Actor, min_force=0.5, max_angle=85):
         """Check if the robot is grasping an object
