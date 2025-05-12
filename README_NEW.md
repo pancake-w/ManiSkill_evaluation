@@ -20,6 +20,13 @@ unzip 'policy_evaluation_3d_assets.zip' -d policy_evaluation_3d_assets
 rm 'policy_evaluation_3d_assets.zip'
 ```
 
+### Env render on local computer
+```
+python -m mani_skill.examples.demo_random_action -e TabletopPickEnv-v1 --render-mode="human" --shader="rt-fast"
+
+python -m mani_skill.examples.demo_random_action -e TabletopPickPlaceEnv-v1 --render-mode="human" --shader="rt-fast"
+```
+
 ### Evaluation in Tabletop for Diffusion Policy
 ```bash
 # pick task
