@@ -12,7 +12,7 @@ pip install d3rlpy # for rl policy evaluation
 pip install coacd # for 3d_assets
 ```
 
-You Should also download the 3d_assets and modify the `ASSET_3D_PATH` and `CONTAINER_3D_PATH` in `ManiSkill/mani_skill/examples/real2sim_3d_assets/__init__.py`
+You Should also download the 3d_assets and modify the `ASSET_3D_PATH` and `CONTAINER_3D_PATH` in [file](mani_skill/examples/real2sim_3d_assets/__init__.py)
 ```bash
 pip install gdown
 gdown "https://drive.google.com/uc?id=1FUOCM5mrI0xxzxvYoBBYOZtoCREDe-9n" # url from bingwen
