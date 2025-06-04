@@ -44,3 +44,5 @@ imgui.ini
 # testing
 .coverage*
 htmlcov/
+
+policy_evaluation_3d_assets/

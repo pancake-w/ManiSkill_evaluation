@@ -10,6 +10,7 @@ pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 -i https://pypi.t
 pip install diffusers==0.11.1 # for diffusion policy evaluation
 pip install d3rlpy # for rl policy evaluation
 pip install coacd # for 3d_assets
+pip install gymnasium==0.29.1
 ```
 
 You Should also download the 3d_assets and modify the `ASSET_3D_PATH` and `CONTAINER_3D_PATH` in [file](mani_skill/examples/real2sim_3d_assets/__init__.py)
@@ -22,9 +23,12 @@ rm 'policy_evaluation_3d_assets.zip'
 
 ### Env render on local computer
 ```
-python -m mani_skill.examples.demo_random_action -e TabletopPickEnv-v1 --render-mode="human" --shader="rt-fast"
+python -m mani_skill.examples.demo_random_action -e TabletopPickEnv-v1 --render-mode="human"
 
-python -m mani_skill.examples.demo_random_action -e TabletopPickPlaceEnv-v1 --render-mode="human" --shader="rt-fast"
+python -m mani_skill.examples.demo_random_action -e TabletopPickPlaceEnv-v1 --render-mode="human"
+
+python -m mani_skill.examples.demo_random_action_episode --render_mode human -e TabletopPickPlaceEnv-v1 -r panda_wristcam
+
 ```
 
 ### Evaluation in Tabletop for Diffusion Policy

@@ -21,7 +21,10 @@ class TableSceneBuilder(SceneBuilder):
     def build(self, is_table_green: bool = False):
         builder = self.scene.create_actor_builder()
         model_dir = Path(osp.dirname(__file__)) / "assets"
-        table_model_file = str(model_dir / "table.glb")
+        if is_table_green:
+            table_model_file = str(model_dir / "table_green_smooth.glb")
+        else:
+            table_model_file = str(model_dir / "table.glb")
         scale = 1.75
 
         table_pose = sapien.Pose(q=euler2quat(0, 0, np.pi / 2))

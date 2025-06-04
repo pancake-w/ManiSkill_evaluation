@@ -15,7 +15,7 @@ from mani_skill.envs.sapien_env import BaseEnv
 from mani_skill.sensors.camera import CameraConfig
 from mani_skill.examples.real2sim_3d_assets import ASSET_3D_PATH, REAL2SIM_3D_ASSETS_PATH, CONTAINER_3D_PATH
 from mani_skill.agents.robots.panda.panda_wristcam import PandaWristCam, Panda
-from mani_skill.envs.utils.randomization.pose import get_objs_random_pose_batch, get_single_obj_grid_pose_batch
+from mani_skill.envs.utils.randomization.pose import get_objs_random_pose_batch, get_single_obj_grid_pose_batch, get_objs_deterministic_pose_batch
 from mani_skill.utils.geometry.rotation_conversions import matrix_to_quaternion
 
 @register_env("TabletopPickPlaceEnv-v1", max_episode_steps=500)
@@ -30,11 +30,23 @@ class TabletopPickPlaceEnv(BaseEnv):
     agent: Union[Panda, PandaWristCam,]
 
     def __init__(self, *args, robot_uids="panda", **kwargs):
-        self.object_name = kwargs.pop("object_name", "tomato")
-        self.container_name = kwargs.pop("container_name", "plate")
+        object_name = kwargs.pop("object_name", None)
+        self.object_name = "tomato" if object_name is None else object_name
+        container_name = kwargs.pop("container_name", None)
+        self.container_name = "plate" if container_name is None else container_name
+
+        self.is_table_green = kwargs.pop("is_table_green", False)
         self.object = {"name": [],"actor": [],}
         self.consecutive_grasp = 0
         self.reconfiguration_num = 0
+
+        if robot_uids == "panda" or robot_uids == "panda_wristcam":
+            self.xy_center = np.array([[-0.17, 0.0],[-0.17, 0.0]])
+        else:
+            self.xy_center = np.array([[-0.17, 0.0],[-0.17, 0.0]])
+        self.half_edge_length_x = np.array([0.1, 0.1])
+        self.half_edge_length_y = np.array([0.2, 0.2])
+
         super().__init__(*args, robot_uids=robot_uids, **kwargs)
 
     @property
@@ -63,6 +75,15 @@ class TabletopPickPlaceEnv(BaseEnv):
                 ])
         pose = Pose.create_from_pq(p=eye, q=matrix_to_quaternion(rotation))
         if self.robot_uids == "panda_wristcam" or self.robot_uids == "panda":
+            camera_config_base = CameraConfig(
+                "base_camera",
+                pose=pose,
+                width=640,
+                height=480,
+                fov=np.deg2rad(44), # vertical fov for realsense d435
+                near=0.01,
+                far=100,
+            )    
             camera_config = CameraConfig(
                     "3rd_view_camera",
                     pose=pose,
@@ -72,7 +93,7 @@ class TabletopPickPlaceEnv(BaseEnv):
                     near=0.01,
                     far=100,
                 )
-        return [camera_config,]
+        return [camera_config, camera_config_base]
 
     @property
     def _default_human_render_camera_configs(self): # what we use to render the scene
@@ -110,26 +131,30 @@ class TabletopPickPlaceEnv(BaseEnv):
         container_actor = self._builder_object_helper(container_root_path, container_path_list[0], q_x_90, 1)
         return name, container_actor
 
-    def get_true_random_pose_batch(self,):
+    def get_true_random_pose_batch(self,options=None):            
         b = self.num_envs
         source_extents = self.object["actor"][0].get_first_collision_mesh(to_world_frame=False).bounding_box_oriented.extents.copy()
         target_extents = self.object["actor"][1].get_first_collision_mesh(to_world_frame=False).bounding_box_oriented.extents.copy()
         extents_x = [source_extents[0], target_extents[0]]
         extents_y = [source_extents[1], target_extents[1]]
 
-        if self.robot_uids == "panda" or self.robot_uids == "panda_wristcam" or self.robot_uids == "panda_bridgedataset_flat_table":
-            xy_center = np.array([[-0.2, 0.0],[-0.2, 0.0]])
-        else:
-            xy_center = np.array([[-0.3, 0.0],[-0.3, 0.0]])
-        half_edge_length_x = np.array([0.1, 0.1])
-        half_edge_length_y = np.array([0.2, 0.2])
         z_value = np.array([0,0])
-        quats = [None, np.array([1.0, 0.0, 0.0, 0.0])]
+        quats = [None, None]
 
-        source_obj_xyz, source_obj_quat, target_obj_xyz, target_obj_quat = get_objs_random_pose_batch(
-                xy_center, half_edge_length_x, half_edge_length_y,
-                z_value, extents_x, extents_y, quats, b, 0.8,
+        if options is not None and "episode_id" in options:
+            if isinstance(options["episode_id"], int):
+                options["episode_id"] = torch.tensor([options["episode_id"]])
+            assert len(options["episode_id"]) == b, "batch size not match"
+            source_obj_xyz, source_obj_quat, target_obj_xyz, target_obj_quat = get_objs_deterministic_pose_batch(
+                self.xy_center, self.half_edge_length_x, self.half_edge_length_y,
+                z_value, extents_x, extents_y, quats, b, options["episode_id"], grid_size=500, threshold_scale=0.7, use_continuous_positions=True
             )
+        else:
+            # if options is None, we use the random pose
+            source_obj_xyz, source_obj_quat, target_obj_xyz, target_obj_quat = get_objs_random_pose_batch(
+                    self.xy_center, self.half_edge_length_x, self.half_edge_length_y,
+                    z_value, extents_x, extents_y, quats, b, 0.7,
+                )
         return source_obj_xyz, source_obj_quat, target_obj_xyz, target_obj_quat
 
     def _builder_object_helper(self, obj_path_root_path: str,obj_path: str, quat, scale = 1.0):
@@ -169,7 +194,7 @@ class TabletopPickPlaceEnv(BaseEnv):
 
     def _load_scene(self, options: dict):
         self.table_scene = TableSceneBuilder(self, robot_init_qpos_noise=0)
-        self.table_scene.build(is_table_green=False)
+        self.table_scene.build(is_table_green=self.is_table_green)
         self.object = {"name": [],"actor": [],}
 
         # container
@@ -218,22 +243,7 @@ class TabletopPickPlaceEnv(BaseEnv):
             self.table_scene.initialize(env_idx)
             self.set_initial_qpos(env_idx)
 
-            # if "episode_id" in options:
-            #     if isinstance(options["episode_id"], int):
-            #         options["episode_id"] = torch.tensor([options["episode_id"]])
-            #         assert len(options["episode_id"]) == b
-            #     # generate pose
-            # else:
-            #     pos_episode_ids = torch.randint(0, len(self.xyz_configs), size=(b,))
-            #     quat_episode_ids = torch.randint(0, len(self.quat_configs), size=(b,))
-            # for i, actor in enumerate(self.objs.values()):
-            #     xyz = self.xyz_configs[pos_episode_ids, i]
-            #     actor.set_pose( # set the pose, but not change the bouding box pose. May be a problem
-            #         Pose.create_from_pq(p=xyz, q=self.quat_configs[quat_episode_ids, i])
-            #     )
-
-            # but not can be used for multi-env
-            source_obj_xyz, source_obj_quat, target_obj_xyz, target_obj_quat = self.get_true_random_pose_batch()
+            source_obj_xyz, source_obj_quat, target_obj_xyz, target_obj_quat = self.get_true_random_pose_batch(options=options)    
             self.object["actor"][0].set_pose(Pose.create_from_pq(p=source_obj_xyz, q=source_obj_quat))
             self.object["actor"][1].set_pose(Pose.create_from_pq(p=target_obj_xyz, q=target_obj_quat))
 
@@ -361,7 +371,7 @@ class TabletopPickPlaceEnv(BaseEnv):
         offset = pos_src - pos_tgt
         xy_flag = (
             torch.linalg.norm(offset[:, :2], dim=1)
-            <= torch.linalg.norm(tgt_obj_half_length_bbox[:2]) + 0.003
+            <= torch.linalg.norm(tgt_obj_half_length_bbox[:2]) + 0.005
         )
         z_flag = (offset[:, 2] > 0) & (
             offset[:, 2] - tgt_obj_half_length_bbox[2] - src_obj_half_length_bbox[2]
