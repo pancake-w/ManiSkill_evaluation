@@ -1,23 +1,24 @@
+from collections import defaultdict
 import json
 import os
 import signal
 import time
-import tyro
+import numpy as np
+from typing import Annotated, Optional
 import torch
+from pathlib import Path
+from mani_skill.utils import visualization
+from mani_skill.utils.visualization.misc import images_to_video
+from mani_skill.utils.geometry.rotation_conversions import matrix_to_euler_angles, euler_angles_to_matrix
+signal.signal(signal.SIGINT, signal.SIG_DFL)  # allow ctrl+c
+
+import gymnasium as gym
 import numpy as np
 from PIL import Image
-import gymnasium as gym
-from pathlib import Path
-from dataclasses import dataclass
-from typing import Annotated, Optional
-from collections import defaultdict
-from mani_skill.utils import visualization
 from mani_skill.envs.sapien_env import BaseEnv
-from mani_skill.utils.visualization.misc import images_to_video
-from mani_skill.utils.geometry.rotation_conversions import matrix_to_euler_angles
+import tyro
+from dataclasses import dataclass
 from mani_skill import MANISKILL_ROOT_DIR
-
-signal.signal(signal.SIGINT, signal.SIG_DFL)  # allow ctrl+c
 
 @dataclass
 class Args:
@@ -74,6 +75,10 @@ class Args:
 
     object_name: Optional[str] = None
 
+    is_delta: bool = False
+    
+    is_table_green: bool = False
+
 def main():
     args = tyro.cli(Args)
     if args.seed is not None:
@@ -93,6 +98,7 @@ def main():
         },
         max_episode_steps=args.max_episode_len,
         sensor_configs={"shader_pack": args.shader},
+        is_table_green = args.is_table_green,
     )
     if args.robot_uids is not None:
         env_kwargs["robot_uids"] = tuple(args.robot_uids.split(","))
@@ -108,14 +114,16 @@ def main():
         **env_kwargs,
     )
     sim_backend = 'gpu' if env.unwrapped.device.type == 'cuda' else 'cpu'
+    device = str(env.unwrapped._sim_device)
 
     if args.model == "diffusion_policy":
         from mani_skill.evaluation.policies.diffusion_policy.dp_infer import DPInference
         from mani_skill.evaluation.policies.diffusion_policy.dp_modules.utils.math import get_pose_from_rot_pos_batch
         model = DPInference(args.obs_normalize_params_path, args.ckpt_path)
     elif args.model == "cql":
-        from mani_skill.evaluation.policies.cql.cql_infer import CQLInference
-        model = CQLInference(obs_normalize_params_path=args.obs_normalize_params_path, saved_model_path=args.ckpt_path)
+        from mani_skill.evaluation.policies.diffusion_policy.dp_modules.utils.math import get_pose_from_rot_pos_batch
+        from mani_skill.evaluation.policies.cql.cql_new_infer import CQLInference
+        model = CQLInference(saved_model_path=args.ckpt_path, device=device)
     else:
         raise NotImplementedError
 
@@ -128,6 +136,8 @@ def main():
     timers = {"env.step+inference": 0, "env.step": 0, "inference": 0, "total": 0}
     total_start_time = time.time()
     timestamp = time.strftime("%Y%m%d_%H%M%S")
+
+    model.pre_init(env) # get init pose to use target control
 
     while eps_count < args.num_episodes:
         seed = args.seed + eps_count
@@ -178,14 +188,20 @@ def main():
                     mat = np.concatenate([mat_6, z_vec], axis=2) # [B, 3, 3]
                     pos = action[:, :3] # [B, 3]
                     gripper_width = action[:, -1, np.newaxis] # [B, 1]
-                    init_to_desired_pose = model.pose_at_obs @ get_pose_from_rot_pos_batch(mat, pos) # for delta_action
-                    # init_to_desired_pose = get_pose_from_rot_pos_batch(mat, pos) # for abs_action
+                    if args.is_delta:
+                        init_to_desired_pose = model.pose_at_obs @ get_pose_from_rot_pos_batch(mat, pos) # for delta_action
+                    else:
+                        init_to_desired_pose = get_pose_from_rot_pos_batch(mat, pos) # for abs_action
                     pose_action = np.concatenate([init_to_desired_pose[:, :3, 3],
                                 matrix_to_euler_angles(torch.from_numpy(init_to_desired_pose[:, :3, :3]),"XYZ").numpy(),
                                 gripper_width], axis=1) # [B, 7]
                     actions_list.append(pose_action)
             else:
-                actions_list.append(actions)
+                if args.is_delta:
+                    pose_action = model.get_abs_actions_via_delta_actions(torch.from_numpy(actions).to(device)) # abs_actions
+                else:
+                    pose_action = actions # [B ,7]
+                actions_list.append(pose_action)
 
             for i in range(len(actions_list)):
                 # step

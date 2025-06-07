@@ -68,6 +68,9 @@ class DPInference:
         self.policy.deserialize(torch.load(saved_model_path))
         self.policy.eval()
         self.policy.cuda()
+    
+    def pre_init(self, env: BaseEnv) -> None:
+        self.init_pose_mat = env.unwrapped.agent.ee_pose_at_robot_base.to_transformation_matrix().cpu().numpy()
 
     def denormalize_action(self, action):
         """

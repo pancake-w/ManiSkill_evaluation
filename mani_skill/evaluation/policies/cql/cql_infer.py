@@ -28,6 +28,9 @@ class CQLInference:
         # load pretrained model
         self.policy.load_model(saved_model_path)
 
+    def pre_init(self, env) -> None:
+        pass
+    
     def denormalize_action(self, action):
         """
         input: action: (B, 8), float, np
