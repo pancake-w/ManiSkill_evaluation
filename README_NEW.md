@@ -8,7 +8,7 @@ pip install -e . -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install gymnasium==0.29.1
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 -i https://pypi.tuna.tsinghua.edu.cn/simple --extra-index-url https://download.pytorch.org/whl/cu121
 
-pip install diffusers==0.11.1 # for diffusion policy evaluation
+pip install diffusers==0.11.1 huggingface_hub==0.25.2 # for diffusion policy evaluation
 pip install d3rlpy==2.8.1 # for rl policy evaluation
 pip install coacd # for 3d_assets
 ```
@@ -34,15 +34,15 @@ python -m mani_skill.examples.demo_random_action_episode --render_mode human -e 
 ### Evaluation in Tabletop for Diffusion Policy
 ```bash
 # pick and place task
-object_name="tomato"
+object_name="green_bell_pepper"
 container_name="plate"
-pick_place_ckpt_path="/path/pickplace_rel.ckpt"
-pick_place_obs_normalize_params_path="/path/pickplace_rel_norm.pkl"
-CUDA_VISIBLE_DEVICES=2 XLA_PYTHON_CLIENT_PREALLOCATE=false python -m mani_skill.evaluation.policy_evaluation \
+pick_place_ckpt_path="/nvme_data/bingwen/Documents/temp/dp/policy_best.ckpt"
+pick_place_obs_normalize_params_path="/nvme_data/bingwen/Documents/temp/dp/norm_stats_1.pkl"
+CUDA_VISIBLE_DEVICES=5 XLA_PYTHON_CLIENT_PREALLOCATE=false python -m mani_skill.evaluation.policy_evaluation \
     --model="diffusion_policy" --ckpt_path="${pick_place_ckpt_path}" \
-    -e "TabletopPickPlaceEnv-v1" -s 0 --num-episodes 100 --num-envs 5 --save-video --max_episode_len 100 \
-    --object_name="$object_name" --container_name="$container_name" -r panda -c pd_ee_pose \
-    --obs_normalize_params_path="$pick_place_obs_normalize_params_path"
+    -e "TabletopPickPlaceEnv-v1" -s 0 --num-episodes 3 --num-envs 3 --save-video --max_episode_len 200 \
+    --object_name="$object_name" --container_name="$container_name" -r panda_wristcam -c pd_ee_pose \
+    --obs_normalize_params_path="$pick_place_obs_normalize_params_path" --is_delta
 ```
 
 ### Evaluation in Tabletop for CQL

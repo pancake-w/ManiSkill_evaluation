@@ -93,8 +93,8 @@ def main():
         control_mode=args.control_mode,
         sim_backend="gpu",
         sim_config={
-            "sim_freq": 500,
-            "control_freq": 5,
+            "sim_freq": 1000,
+            "control_freq": 25,
         },
         max_episode_steps=args.max_episode_len,
         sensor_configs={"shader_pack": args.shader},
@@ -189,7 +189,7 @@ def main():
                     pos = action[:, :3] # [B, 3]
                     gripper_width = action[:, -1, np.newaxis] # [B, 1]
                     if args.is_delta:
-                        init_to_desired_pose = model.pose_at_obs @ get_pose_from_rot_pos_batch(mat, pos) # for delta_action
+                        init_to_desired_pose = get_pose_from_rot_pos_batch(mat, pos) @ model.pose_at_obs # for delta_action in base frame 
                     else:
                         init_to_desired_pose = get_pose_from_rot_pos_batch(mat, pos) # for abs_action
                     pose_action = np.concatenate([init_to_desired_pose[:, :3, 3],
@@ -260,7 +260,7 @@ def main():
 
                 success = np.sum([d["success"] for d in infos]) >= 6
                 images_to_video(images, str(exp_vis_dir), f"video_{eps_count + i}_success={success}",
-                                fps=10, verbose=True)
+                                fps=30, verbose=True)
 
         # save data
         if args.save_data:
