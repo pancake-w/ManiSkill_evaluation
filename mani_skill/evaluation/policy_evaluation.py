@@ -19,6 +19,7 @@ from mani_skill.envs.sapien_env import BaseEnv
 import tyro
 from dataclasses import dataclass
 from mani_skill import MANISKILL_ROOT_DIR
+import pickle
 
 @dataclass
 class Args:
@@ -189,12 +190,16 @@ def main():
                     pos = action[:, :3] # [B, 3]
                     gripper_width = action[:, -1, np.newaxis] # [B, 1]
                     if args.is_delta:
-                        init_to_desired_pose = get_pose_from_rot_pos_batch(mat, pos) @ model.pose_at_obs # for delta_action in base frame 
+                        init_to_desired_pose = model.pose_at_obs @ get_pose_from_rot_pos_batch(mat, pos) # for delta_action in base frame 
                     else:
                         init_to_desired_pose = get_pose_from_rot_pos_batch(mat, pos) # for abs_action
-                    pose_action = np.concatenate([init_to_desired_pose[:, :3, 3],
-                                matrix_to_euler_angles(torch.from_numpy(init_to_desired_pose[:, :3, :3]),"XYZ").numpy(),
-                                gripper_width], axis=1) # [B, 7]
+                    pose_action = np.concatenate(
+                        [
+                            init_to_desired_pose[:, :3, 3],
+                            matrix_to_euler_angles(torch.from_numpy(init_to_desired_pose[:, :3, :3]),"XYZ").numpy(),
+                            gripper_width
+                        ],
+                        axis=1) # [B, 7]
                     actions_list.append(pose_action)
             else:
                 if args.is_delta:
