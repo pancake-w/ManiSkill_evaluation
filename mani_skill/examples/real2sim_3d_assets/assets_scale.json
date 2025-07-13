@@ -25,7 +25,8 @@
     },
     "pen":{
         "scale": [0.8, 0.8, 0.8],
-        "quat" : [1, 0, 0, 0]
+        "quat" : [0.7071068, 0, 0, 0.7071068],
+        "grasp_xyz_offset": [0, 0, 0.015]
     },
     "pepper":{
         "scale": [0.4, 0.4, 0.4],
@@ -51,30 +52,36 @@
         "quat" : [1.0, 0, 0, 0]
     },
     "golf_ball":{
-        "scale": [0.02, 0.02, 0.02]
+        "scale": [0.015, 0.015, 0.015],
+        "grasp_xyz_offset": [0, 0, 0.025]
     },
     "bowl":{
         "scale": [0.8, 0.8, 0.8]
     },
     "green_bell_pepper":{
-        "scale": [0.8, 0.8, 0.8]
+        "scale": [0.8, 0.8, 0.8],
+        "grasp_xyz_offset": [0, 0, 0.01]
     },
     "magnifying_glass_with_victorian_wooden_handle":{
         "scale": [0.4, 0.4, 0.4]
     },
     "nonstop":{
-        "scale": [0.6, 0.6, 0.6]
+        "scale": [0.6, 0.6, 0.6],
+        "grasp_xyz_offset": [0, 0, 0.035]
     },
     "peach":{
         "scale": [0.7, 0.7, 0.7],
-        "quat" : [1.0, 0, 0, 0]
+        "quat" : [1.0, 0, 0, 0],
+        "grasp_xyz_offset": [0, 0, 0.025]
     },
     "red_apple":{
-        "scale": [0.8, 0.8, 0.8]
+        "scale": [0.8, 0.8, 0.8],
+        "grasp_xyz_offset": [0, 0, 0.005]
     },
     "yellow_mongo":{
         "scale": [0.8, 0.8, 0.8],
-        "quat" : [1.0, 0, 0, 0]
+        "quat" : [1.0, 0, 0, 0],
+        "grasp_xyz_offset": [0, 0, 0.025]
     },
     "blueberry":{
         "scale": [0.8, 0.8, 0.8]
@@ -82,5 +89,14 @@
     "strawberry":{
         "scale": [0.3, 0.3, 0.3],
         "quat" : [1, 0, 0, 0]
+    },
+    "garlic":{
+        "scale": [0.8, 0.8, 0.8],
+        "quat" : [1, 0, 0, 0],
+        "grasp_xyz_offset": [0, 0, 0.025]
+    },
+    "tomato":{
+        "scale": [1.0, 1.0, 1.0],
+        "grasp_xyz_offset": [0, 0, -0.005]
     }
 }
