@@ -5,7 +5,7 @@
 conda create -n maniskill_evaluation python==3.10 -y
 conda activate maniskill_evaluation
 pip install -e . -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install gymnasium==0.29.1
+pip install gymnasium==0.29.1 -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 -i https://pypi.tuna.tsinghua.edu.cn/simple --extra-index-url https://download.pytorch.org/whl/cu121
 
 pip install diffusers==0.11.1 huggingface_hub==0.25.2 # for diffusion policy evaluation
@@ -22,10 +22,10 @@ rm 'policy_evaluation_3d_assets.zip'
 ```
 
 ### Env render on local computer
-```
-python -m mani_skill.examples.demo_random_action -e TabletopPickEnv-v1 --render-mode="human"
+``` bash
+python -m mani_skill.examples.demo_random_action -e TabletopPickEnv-v1 --render-mode="rgb_array" # human
 
-python -m mani_skill.examples.demo_random_action -e TabletopPickPlaceEnv-v1 --render-mode="human"
+python -m mani_skill.examples.demo_random_action -e TabletopPickPlaceEnv-v1 --render-mode="rgb_array" # human
 
 python -m mani_skill.examples.demo_random_action_episode --render_mode human -e TabletopPickPlaceEnv-v1 -r panda_wristcam
 

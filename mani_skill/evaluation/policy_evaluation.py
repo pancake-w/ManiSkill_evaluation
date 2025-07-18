@@ -79,6 +79,9 @@ class Args:
     is_delta: bool = False
     
     is_table_green: bool = False
+    
+    initial_eps_count: int = 0
+    """Initial episode count, used to avoid overwriting previous data when resuming evaluation."""
 
 def main():
     args = tyro.cli(Args)
@@ -129,6 +132,7 @@ def main():
         raise NotImplementedError
 
     eval_metrics = defaultdict(list)
+    initial_eps_count = args.initial_eps_count
     eps_count = 0
 
     print(f"Running Real2Sim Evaluation of model {args.model} on environment {args.env_id}")
@@ -154,7 +158,7 @@ def main():
         # env and policy reset
         env_reset_options = {
             "reconfigure": True,
-            "episode_id": torch.arange(args.num_envs) + eps_count
+            "episode_id": torch.arange(args.num_envs) + eps_count + initial_eps_count,
         }
         obs, info = env.reset(seed=seed, options=env_reset_options)
         obs_image = obs["sensor_data"]["3rd_view_camera"]["rgb"].to(torch.uint8) # on cuda:0
@@ -244,14 +248,14 @@ def main():
         if args.save_video:
             if args.container_name != None and args.object_name != None:
                 temp_name = f"put_{args.object_name}_on_{args.container_name}"
-                exp_vis_dir = Path(args.record_dir) / f"visualize/{Path(args.ckpt_path).name}/{args.env_id}" / temp_name / timestamp
+                exp_vis_dir = Path(args.record_dir) / f"visualize/{Path(args.ckpt_path).stem}/{args.env_id}" / temp_name / timestamp
                 exp_vis_dir.mkdir(parents=True, exist_ok=True)
             elif args.object_name != None:
                 temp_name = f"pick_the_{args.object_name}_up"
-                exp_vis_dir = Path(args.record_dir) / f"visualize/{Path(args.ckpt_path).name}/{args.env_id}" / temp_name / timestamp
+                exp_vis_dir = Path(args.record_dir) / f"visualize/{Path(args.ckpt_path).stem}/{args.env_id}" / temp_name / timestamp
                 exp_vis_dir.mkdir(parents=True, exist_ok=True)
             else:
-                exp_vis_dir = Path(args.record_dir) / f"visualize/{Path(args.ckpt_path).name}/{args.env_id}" / timestamp
+                exp_vis_dir = Path(args.record_dir) / f"visualize/{Path(args.ckpt_path).stem}/{args.env_id}" / timestamp
                 exp_vis_dir.mkdir(parents=True, exist_ok=True)
 
             for i in range(args.num_envs):
@@ -264,12 +268,12 @@ def main():
                         images[j + 1] = visualization.put_info_on_image(images[j + 1], infos[j])
 
                 success = np.sum([d["success"] for d in infos]) >= 6
-                images_to_video(images, str(exp_vis_dir), f"video_{eps_count + i}_success={success}",
+                images_to_video(images, str(exp_vis_dir), f"video_eps_{eps_count + initial_eps_count + i}_success={success}",
                                 fps=30, verbose=True)
 
         # save data
         if args.save_data:
-            exp_data_dir = Path(args.record_dir) / f"collect/{Path(args.ckpt_path).name}/{args.env_id}" / timestamp
+            exp_data_dir = Path(args.record_dir) / f"collect/{Path(args.ckpt_path).stem}/{args.env_id}" / timestamp
             exp_data_dir.mkdir(parents=True, exist_ok=True)
 
             for i in range(args.num_envs):
@@ -277,7 +281,7 @@ def main():
                     continue
                 res = datas[i].copy()
                 res["image"] = [Image.fromarray(im).convert("RGB") for im in res["image"]]
-                np.save(exp_data_dir / f"data_{eps_count + i:0>4d}.npy", res)
+                np.save(exp_data_dir / f"data_eps_{eps_count + initial_eps_count + i:0>4d}.npy", res)
 
         # metrics log and print
         for k, v in info.items():
@@ -297,6 +301,7 @@ def main():
         print(f"{key}: {value:.2f} seconds")
 
     mean_metrics = {k: np.mean(v) for k, v in eval_metrics.items()}
+    mean_metrics["initial_episode_idx"] = initial_eps_count
     mean_metrics["total_episodes"] = eps_count
     mean_metrics["total_steps"] = eps_count * args.max_episode_len
     mean_metrics["time/episodes_per_second"] = eps_count / timers["total"]
