@@ -306,10 +306,10 @@ def get_objs_deterministic_pose_batch(xy_center, half_edge_length_x, half_edge_l
             
             # 确定性地选择四元数
             quat_idx = config_id % len(predefined_quats)
-            first_quat = predefined_quats[quat_idx]
+            second_quat = predefined_quats[quat_idx]
         
             quat_idx = (config_id // len(predefined_quats)) % len(predefined_quats)
-            second_quat = predefined_quats[quat_idx]
+            first_quat = predefined_quats[quat_idx]
             
             # 根据first_idx分配到source/target
             if first_idx == 0:
