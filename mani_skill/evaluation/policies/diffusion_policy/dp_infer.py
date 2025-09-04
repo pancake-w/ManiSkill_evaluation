@@ -155,6 +155,8 @@ class DPInference:
             ],
             axis = 1,
         )
+        masks = [0,0,0,0,0,0,0,0,0,0]
+        proprio_state = np.where(masks, proprio_state, np.zeros_like(proprio_state))
         image_data, qpos_data = self.process_data(image_list, proprio_state)
         image_data, qpos_data = image_data.cuda(), qpos_data.cuda()
 
