@@ -47,6 +47,7 @@ class TabletopPickPlaceEnv(BaseEnv):
         self.half_edge_length_x = np.array([0.1, 0.1])
         self.half_edge_length_y = np.array([0.2, 0.2])
 
+        self.object_grasp_xyz_offset = np.array([0, 0, 0]) # offset for the object to be placed on the table
         super().__init__(*args, robot_uids=robot_uids, **kwargs)
 
     @property
@@ -65,33 +66,35 @@ class TabletopPickPlaceEnv(BaseEnv):
 
     @property
     def _default_sensor_configs(self):
-        # agent was set by self.table_scene.initialize()
-        robot_pose = sapien.Pose(p=[-0.615, 0, 0], q=[1,0,0,0])
-        eye = torch.tensor([0.76357918+robot_pose.p[0], -0.0395012+robot_pose.p[1], 0.68071344+robot_pose.p[2]])
-        rotation = torch.tensor([
-                    [-0.53301526, -0.05021884, -0.844614,],
-                    [0.01688062, -0.99866954, 0.04872569,],
-                    [-0.84593722, 0.01171393, 0.53315383,],
-                ])
-        pose = Pose.create_from_pq(p=eye, q=matrix_to_quaternion(rotation))
-        if self.robot_uids == "panda_wristcam" or self.robot_uids == "panda":
+        # # agent was set by self.table_scene.initialize()
+        # robot_pose = sapien.Pose(p=[-0.615, 0, 0], q=[1,0,0,0])
+        # eye = torch.tensor([0.76357918+robot_pose.p[0], -0.0395012+robot_pose.p[1], 0.68071344+robot_pose.p[2]])
+        # rotation = torch.tensor([
+        #             [-0.53301526, -0.05021884, -0.844614,],
+        #             [0.01688062, -0.99866954, 0.04872569,],
+        #             [-0.84593722, 0.01171393, 0.53315383,],
+        #         ])
+        # pose = Pose.create_from_pq(p=eye, q=matrix_to_quaternion(rotation))
+        # pose=Pose.create_from_pq([0.45739, 0, 0.477254], [0.00729302, 0.233277, 0.0017498, -0.972381])
+        pose=Pose.create_from_pq([0.457, 0, 0.477], [0.0, -0.258819, 0.0, 0.9659258])
+        if self.robot_uids == "panda_wristcam" or self.robot_uids == "panda" or self.robot_uids == "panda_bridgedataset_flat_table":
             camera_config_base = CameraConfig(
                 "base_camera",
                 pose=pose,
                 width=640,
                 height=480,
                 fov=np.deg2rad(44), # vertical fov for realsense d435
-                near=0.01,
-                far=100,
-            )    
+                near=0.01, # 0.1
+                far=100, # 1000
+            )
             camera_config = CameraConfig(
                     "3rd_view_camera",
                     pose=pose,
                     width=640,
                     height=480,
                     fov=np.deg2rad(44), # vertical fov for realsense d435
-                    near=0.01,
-                    far=100,
+                    near=0.01, # 0.1
+                    far=100, # 1000
                 )
         return [camera_config, camera_config_base]
 
@@ -108,12 +111,12 @@ class TabletopPickPlaceEnv(BaseEnv):
             far=100,
         )
 
-    def get_language_instruction(self, is_place = True):
+    def get_language_instruction(self,):
         object_name = self.object["name"][0].replace("_", " ")
-        if is_place:
-            container_name = self.object["name"][1].replace("_", " ")
-            return [f"Put {object_name} on {container_name}."] * self.num_envs
-        return [f"Pick {object_name} up."] * self.num_envs
+        container_name = self.object["name"][1].replace("_", " ")
+        if container_name == "bowl":
+            return [f"Put {object_name} in {container_name}."] * self.num_envs
+        return [f"Put {object_name} on {container_name}."] * self.num_envs
 
     def get_scene_description(self):
         return [f"The scene is a simulated workspace designed for robotics tasks. It centers around a wooden table surface situated within a plain, neutral-colored room. A robotic arm is positioned above the table, ready to interact with the environment."] * self.num_envs
@@ -167,6 +170,9 @@ class TabletopPickPlaceEnv(BaseEnv):
                 scale = np.array(assests_scale_data[object_name]["scale"])
             if "quat" in assests_scale_data[object_name]:
                 quat = np.array(assests_scale_data[object_name]["quat"])
+            if "grasp_xyz_offset" in assests_scale_data[object_name]:
+                # only support for object
+                self.object_grasp_xyz_offset = np.array(assests_scale_data[object_name]["grasp_xyz_offset"])
         else:
             scale = [scale] * 3
         obj_abs_path = os.path.join(obj_path_root_path, obj_path)   
