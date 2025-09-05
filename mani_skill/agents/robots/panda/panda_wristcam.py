@@ -26,7 +26,7 @@ class PandaWristCam(Panda):
                 # height=128,
                 width=640,
                 height=480,
-                fov=np.pi / 2,
+                fov=np.deg2rad(44), # vertical fov for realsense d435
                 near=0.01,
                 far=100,
                 mount=self.robot.links_map["camera_link"],
