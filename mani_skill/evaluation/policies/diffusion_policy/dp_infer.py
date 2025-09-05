@@ -48,7 +48,7 @@ class DPInference:
             ]
         )
 
-        self.cameras = ['3rd_view_camera']
+        self.cameras = ['3rd_view_camera', 'hand_camera']
 
         self.policy_config = {
             'lr': 1e-5,
@@ -95,8 +95,7 @@ class DPInference:
 
         image_data = torch.from_numpy(image_list)  # (M, B, H, W, C)
         image_data = image_data.permute(1, 0, 4, 2, 3)  # (B, M, C, H, W)
-        image_data = image_data.view(B * M, C, H, W)
-
+        image_data = image_data.reshape(B * M, C, H, W)
         try:
             transformations = [
                 # transforms.CenterCrop((int(H * 0.95), int(W * 0.95))),
@@ -141,7 +140,7 @@ class DPInference:
         image_list = []
         for cam in self.cameras:
             image_list.append(obs['sensor_data'][cam]['rgb'].to(torch.uint8).cpu().numpy())
-
+        
         pose:Pose = env.agent.ee_pose_at_robot_base
         self.pose_at_obs = pose.to_transformation_matrix().cpu().numpy()
         pose_mat = rotation_conversions.quaternion_to_matrix(pose.q) # pose_mat = quat2mat(pose.q) w,x,y,z
