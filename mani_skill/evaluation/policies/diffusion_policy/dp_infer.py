@@ -157,6 +157,15 @@ class DPInference:
         masks = [0,0,0,0,0,0,0,0,0,0]
         proprio_state = np.where(masks, proprio_state, np.zeros_like(proprio_state))
         image_data, qpos_data = self.process_data(image_list, proprio_state)
+
+        # # save image_data
+        # image_save = image_data[0,1].cpu().numpy()
+        # image_save = image_save.transpose(1, 2, 0)
+        # image_save = image_save * 255
+        # image_save = image_save.astype(np.uint8)
+        # imageio.imwrite("debug_image/image_data_mani.png", image_save)
+        # breakpoint()
+
         image_data, qpos_data = image_data.cuda(), qpos_data.cuda()
 
         pred_actions = self.policy(qpos_data, image_data).cpu()
