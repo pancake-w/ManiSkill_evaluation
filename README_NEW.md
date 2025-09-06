@@ -23,9 +23,9 @@ rm 'policy_evaluation_3d_assets.zip'
 
 ### Env render on local computer
 ``` bash
-python -m mani_skill.examples.demo_random_action -e TabletopPickEnv-v1 --render-mode="rgb_array" # human
+python -m mani_skill.examples.demo_random_action -e TabletopPickEnv-v1 -r panda_wristcam --render-mode="rgb_array" # human
 
-python -m mani_skill.examples.demo_random_action -e TabletopPickPlaceEnv-v1 --render-mode="rgb_array" # human
+python -m mani_skill.examples.demo_random_action -e TabletopPickPlaceEnv-v1 -r panda_wristcam --render-mode="human" # human
 
 python -m mani_skill.examples.demo_random_action_episode --render_mode human -e TabletopPickPlaceEnv-v1 -r panda_wristcam
 
