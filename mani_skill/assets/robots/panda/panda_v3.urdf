@@ -348,7 +348,8 @@
   </joint>
   <link name="camera_base_link"/>
   <joint name="camera_link_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0.02 0.0115"/>
+    <!--  original rpy="0 0 0" xyz="0 0.02 0.0115"-->
+    <origin rpy="0 0.436 0" xyz="-0.03 0.0 0.05"/>
     <parent link="camera_base_link"/>
     <child link="camera_link"/>
   </joint>
@@ -356,7 +357,7 @@
     <visual>
       <origin rpy="1.5707963267948966 0 1.5707963267948966" xyz="0 -0.02 0"/>
       <geometry>
-        <mesh filename="realsense2_description/meshes/d415.stl"/>
+        <mesh filename="realsense2_description/meshes/d435.dae"/>
       </geometry>
       <material name="aluminum"/>
     </visual>
