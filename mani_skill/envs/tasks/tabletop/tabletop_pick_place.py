@@ -100,13 +100,14 @@ class TabletopPickPlaceEnv(BaseEnv):
 
     @property
     def _default_human_render_camera_configs(self): # what we use to render the scene
-        pose = sapien_utils.look_at(eye=[0.3, 0, 0.8], target=[0, 0, 0.1])
+        # pose = sapien_utils.look_at(eye=[0.3, 0, 0.8], target=[0, 0, 0.1])
+        pose=Pose.create_from_pq([0.457, 0, 0.477], [0.0, -0.258819, 0.0, 0.9659258])
         return CameraConfig(
             "render_camera",
             pose=pose,
-            width=640, # 1280
-            height=480, # 960
-            fov=1.2,
+            width=640,
+            height=480,
+            fov=np.deg2rad(44), # vertical fov for realsense d435
             near=0.01,
             far=100,
         )
