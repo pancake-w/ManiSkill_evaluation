@@ -83,6 +83,12 @@ class Args:
     initial_eps_count: int = 0
     """Initial episode count, used to avoid overwriting previous data when resuming evaluation."""
 
+def concat_images(images_third, images_wrist):
+    images = []
+    for i in range(len(images_third)):
+        images.append(np.concatenate([images_third[i], images_wrist[i]], axis=1))
+    return images
+
 def main():
     args = tyro.cli(Args)
     if args.seed is not None:
@@ -150,6 +156,7 @@ def main():
         # data dump
         datas = [{
             "image": [],  # obs_t: [0, T-1]
+            "image_wrist": [],  # obs_t: [0, T-1]
             "instruction": "",
             "action": [],  # a_t: [0, T-1]
             "info": [],  # info after executing a_t: [1, T]
@@ -162,6 +169,7 @@ def main():
         }
         obs, info = env.reset(seed=seed, options=env_reset_options)
         obs_image = obs["sensor_data"]["3rd_view_camera"]["rgb"].to(torch.uint8) # on cuda:0
+        obs_image_wrist = obs["sensor_data"]["hand_camera"]["rgb"].to(torch.uint8)
         instruction = env.unwrapped.get_language_instruction()
         model.reset(instruction)
 
@@ -217,8 +225,10 @@ def main():
                 start_time = time.time()
                 action = actions_list[i]
                 obs, reward, terminated, truncated, info = env.step(action)
+                breakpoint()
                 print(f"step {elapsed_steps} ee_pose_action:", action)
                 obs_image_new = obs["sensor_data"]["3rd_view_camera"]["rgb"].to(torch.uint8)
+                obs_image_wrist_new = obs["sensor_data"]["hand_camera"]["rgb"].to(torch.uint8)
                 info = {k: v.cpu().numpy() for k, v in info.items()}
                 truncated = bool(truncated.any())  # note that all envs truncate and terminate at the same time.
 
@@ -230,19 +240,24 @@ def main():
                 # data dump: image, action, info
                 for i in range(args.num_envs):
                     log_image = obs_image[i].cpu().numpy()
+                    log_image_wrist = obs_image_wrist[i].cpu().numpy()
                     log_action = action[i].tolist()
                     log_info = {k: v[i].tolist() for k, v in info.items()}
                     datas[i]["image"].append(log_image)
+                    datas[i]["image_wrist"].append(log_image_wrist)
                     datas[i]["action"].append(log_action)
                     datas[i]["info"].append(log_info)
                 # add count
                 obs_image = obs_image_new
+                obs_image_wrist = obs_image_wrist_new
                 elapsed_steps += 1
 
         # data dump: last image
         for i in range(args.num_envs):
             log_image = obs_image[i].cpu().numpy()
+            log_image_wrist = obs_image_wrist[i].cpu().numpy()
             datas[i]["image"].append(log_image)
+            datas[i]["image_wrist"].append(log_image_wrist)
 
         # save video
         if args.save_video:
@@ -259,7 +274,11 @@ def main():
                 exp_vis_dir.mkdir(parents=True, exist_ok=True)
 
             for i in range(args.num_envs):
-                images = datas[i]["image"]
+                images_third = datas[i]["image"]
+                images_wrist = datas[i]["image_wrist"]
+                images = concat_images(images_third, images_wrist)
+
+
                 infos = datas[i]["info"]
                 assert len(images) == len(infos) + 1
 
