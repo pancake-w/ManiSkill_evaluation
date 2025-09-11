@@ -29,6 +29,11 @@ python -m mani_skill.examples.demo_random_action -e TabletopPickPlaceEnv-v1 -r p
 
 python -m mani_skill.examples.demo_random_action_episode --render_mode human -e TabletopPickPlaceEnv-v1 -r panda_wristcam
 
+
+python -m mani_skill.examples.demo_specification_action -e TabletopPickPlaceEnv-v1 -r panda_wristcam --render-mode="rgb_array" -c pd_ee_pose # rgb_array, huamn
+
+
+
 ```
 
 ### Evaluation in Tabletop for Diffusion Policy
