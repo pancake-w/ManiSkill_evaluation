@@ -99,7 +99,7 @@ class DPInference:
         try:
             transformations = [
                 # transforms.CenterCrop((int(H * 0.95), int(W * 0.95))),
-                transforms.RandomCrop((int(H * 0.95), int(W * 0.95))),
+                # transforms.RandomCrop((int(H * 0.95), int(W * 0.95))),
                 # transforms.Resize((240, 320), antialias=True),
                 transforms.Resize((224, 224), antialias=True),
             ]
@@ -110,6 +110,9 @@ class DPInference:
             print(e)
 
         image_data = image_data.view(B, M, C, 224, 224)
+
+        # imageio.imwrite("test_obs_3rd.png", image_data[0][0].permute(1, 2, 0).cpu().numpy())
+        # imageio.imwrite("test_obs_wrist.png", image_data[0][1].permute(1, 2, 0).cpu().numpy())
         image_data = image_data.float() / 255.0  # [0,1]
 
         proprio_state = np.asarray(proprio_state)
@@ -159,18 +162,46 @@ class DPInference:
         proprio_state = np.where(masks, proprio_state, np.zeros_like(proprio_state))
         image_data, qpos_data = self.process_data(image_list, proprio_state)
 
-        # # save image_data
-        # image_save = image_data[0,1].cpu().numpy()
+        # # # save image_data
+        # image_save = image_data[0,0].cpu().numpy()
         # image_save = image_save.transpose(1, 2, 0)
         # image_save = image_save * 255
         # image_save = image_save.astype(np.uint8)
-        # imageio.imwrite("debug_image/image_data_mani.png", image_save)
-        # breakpoint()
+        # imageio.imwrite("./debug/img/image_data_mani.png", image_save)
+        # # # breakpoint()
 
         image_data, qpos_data = image_data.cuda(), qpos_data.cuda()
 
+        # torch.save(image_data, "./debug/image_data_mani.pt")
+        # torch.save(qpos_data, "./debug/qpos_data_mani.pt")
+        # exit(0)
+
+        # image_data = torch.load("./debug/image_data_mani.pt")
+        # qpos_data = torch.load("./debug/qpos_data_mani.pt")
+        # image_data = image_data[:1]
+        # qpos_data = qpos_data[:1]
+
+        # print("qpos_data:", qpos_data)
+
+
         pred_actions = self.policy(qpos_data, image_data).cpu()
+        # print("pred_actions:", pred_actions[0], pred_actions.shape)
+        # exit(0)
+        # print("pred_actions:", pred_actions[0,:3, :])
+        
+        # save_dir = "./debug/data.npy"
+        # os.makedirs(os.path.dirname(save_dir), exist_ok=True)
+
+        # np.save(save_dir, {
+        #     "image_data": image_data.cpu().numpy(),
+        #     "qpos_data": qpos_data.cpu().numpy(),
+        #     "pred_actions": pred_actions.cpu().numpy(),
+        # })
+
+        # exit(0)
+        
         actions = self.denormalize_action(pred_actions)
+        print("unnormalized actions:", actions[0], actions.shape, actions.mean(), actions.std())
         return None, actions
 
     def reset(self, task_description: str) -> None:

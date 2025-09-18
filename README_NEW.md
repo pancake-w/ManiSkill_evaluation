@@ -36,11 +36,11 @@ python -m mani_skill.examples.demo_random_action_episode --render_mode human -e 
 # pick and place task
 object_name="nonstop"
 container_name="plate"
-pick_place_ckpt_path="/ML-vePFS/tangyinzhou/yinuo/dp_train_zhiting/ckpts/20250907_143337/policy_step_200000_seed_0.ckpt"
-pick_place_obs_normalize_params_path="/ML-vePFS/tangyinzhou/yinuo/dp_train_zhiting/ckpts/20250907_143337/norm_stats_1_epsnum_500.pkl"
+pick_place_ckpt_path="/ML-vePFS/tangyinzhou/yinuo/dp_train_zhiting/ckpts/20250914_094502/policy_step_140000_seed_0.ckpt"
+pick_place_obs_normalize_params_path=""
 CUDA_VISIBLE_DEVICES=1 XLA_PYTHON_CLIENT_PREALLOCATE=false python -m mani_skill.evaluation.policy_evaluation \
     --model="diffusion_policy" --ckpt_path="${pick_place_ckpt_path}" \
-    -e "TabletopPickPlaceEnv-v1" -s 0 --num-episodes 100 --num-envs 25 --save-video --max_episode_len 300 \
+    -e "TabletopPickPlaceEnv-v1" -s 0 --num-episodes 100 --num-envs 25 --save-video --max_episode_len 200 \
     --object_name="$object_name" --container_name="$container_name" -r panda_wristcam -c pd_ee_pose \
     --obs_normalize_params_path="$pick_place_obs_normalize_params_path" --is_delta
 ```

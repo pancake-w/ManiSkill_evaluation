@@ -12,6 +12,10 @@ from diffusers.training_utils import EMAModel
 from mani_skill.evaluation.policies.diffusion_policy.dp_modules.models.base_nets import ResNet18Conv, SpatialSoftmax
 from mani_skill.evaluation.policies.diffusion_policy.dp_modules.models.diffusion_nets import replace_bn_with_gn, ConditionalUnet1D
 
+import imageio
+import os
+
+
 # with diffusers verison 0.11.1
 class DiffusionPolicy(nn.Module):
     def __init__(self, args_override):
@@ -95,10 +99,23 @@ class DiffusionPolicy(nn.Module):
         self.nets = nets
         self.ema = ema
 
-        # setup noise scheduler
+        def cosine_beta_schedule(timesteps, s=0.008):
+            """与您代码中完全相同的cosine调度函数"""
+            steps = timesteps + 1
+            x = np.linspace(0, steps, steps)
+            alphas_cumprod = np.cos(((x / steps) + s) / (1 + s) * np.pi * 0.5) ** 2
+            alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
+            betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
+            betas_clipped = np.clip(betas, a_min=0, a_max=0.999)
+            return betas_clipped
+
+        # 生成与您代码完全相同的beta值
+        custom_betas = cosine_beta_schedule(50)
+
+        # 使用自定义beta值创建调度器
         self.noise_scheduler = DDIMScheduler(
             num_train_timesteps=50,
-            beta_schedule='squaredcos_cap_v2',
+            trained_betas=custom_betas,      # 使用您的自定义cosine调度
             clip_sample=True,
             set_alpha_to_one=True,
             steps_offset=0,
@@ -107,6 +124,7 @@ class DiffusionPolicy(nn.Module):
 
         n_parameters = sum(p.numel() for p in self.parameters())
         print("number of parameters: %.2fM" % (n_parameters / 1e6,))
+        self.dp_step = 0
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.nets.parameters(), lr=self.lr, weight_decay=self.weight_decay)
@@ -172,19 +190,43 @@ class DiffusionPolicy(nn.Module):
             if self.ema is not None:
                 nets = self.ema.averaged_model
 
+            # print("image iuput:", image[0])
+            # print("image input:", image[1])
+            # exit(0)
+
+
+            # print("saving image step:", self.dp_step)
+            # image_save = image[0].cpu().numpy()
+            # image_save = image_save.transpose(0, 2, 3, 1)
+            # image_save = image_save*255
+            # image_save = image_save.astype(np.uint8)
+            # for i in range(self.num_images):
+            #     imageio.imwrite(f"debug/obs/test_image_{self.dp_step}_{i}.png", image_save[i])
+
+            # torch.save(image[0], f"debug/obs/test_image_{self.dp_step}.pt")
+            # self.dp_step += 1
+
+
             all_features = []
             for cam_id in range(self.num_images):
                 cam_image = image[:, cam_id]
                 cam_features = nets['policy']['backbones'][cam_id](cam_image)
+                # print(cam_features[0])
+                # exit(0)
                 pool_features = nets['policy']['pools'][cam_id](cam_features)
                 pool_features = torch.flatten(pool_features, start_dim=1)
                 out_features = nets['policy']['linears'][cam_id](pool_features)
                 all_features.append(out_features)
 
+            #yinuo : qpos 0
+            qpos = torch.zeros_like(qpos)
             obs_cond = torch.cat(all_features + [qpos], dim=1)
 
             # initialize action from Guassian noise
-            noisy_action = torch.randn(
+            # noisy_action = torch.randn(
+            #     (B, Tp, action_dim), device=obs_cond.device)
+            # naction = noisy_action
+            noisy_action = torch.zeros(
                 (B, Tp, action_dim), device=obs_cond.device)
             naction = noisy_action
 
@@ -199,15 +241,36 @@ class DiffusionPolicy(nn.Module):
                     timestep=k,
                     global_cond=obs_cond
                 )
+                # print("noise_inpit:", naction[0])
+                # print("noise_inpit:", k)
+                # print("noise_inpit:", obs_cond[0])
+                # print("noise_pred:", noise_pred[0], noise_pred[0].mean(), noise_pred[0].std())
+                # exit(0)
 
-                # print(noise_pred.shape)
+                # if k.item() == 0:
+                #     save_dir_2 = "./debug/data2.npy"
+                #     np.save(save_dir_2, {
+                #         "naction": naction.detach().cpu().numpy(),
+                #         "obs_cond": obs_cond.detach().cpu().numpy(),
+                #         "k": k.detach().cpu().numpy(),
+                #         "noise_pred": noise_pred.detach().cpu().numpy()
+                #     })
 
                 # inverse diffusion step (remove noise)
                 naction = self.noise_scheduler.step(
                     model_output=noise_pred,
                     timestep=k,
-                    sample=naction
+                    sample=naction,
+                    use_clipped_model_output=True
                 ).prev_sample
+
+                # print(k, "naction:", naction[0], naction.shape, naction.mean(), naction.std())
+            
+            # exit(0)
+
+            # exit(0)
+            print("==================== %d ====================" % self.dp_step)
+            print("naction:", naction[0], naction.shape, naction.mean(), naction.std())
 
             return naction
 

@@ -48,3 +48,7 @@ htmlcov/
 policy_evaluation_3d_assets/
 
 debug_image/
+
+debug/
+
+*.png

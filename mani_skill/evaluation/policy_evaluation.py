@@ -150,6 +150,8 @@ def main():
 
     model.pre_init(env) # get init pose to use target control
 
+    action_log = []
+
     while eps_count < args.num_episodes:
         seed = args.seed + eps_count
 
@@ -179,20 +181,28 @@ def main():
         for idx in range(args.num_envs):
             datas[idx]["instruction"] = instruction[idx]
 
+        total_action_list = []
+        debug_cnt = 0
+
         elapsed_steps = 0
         predicted_terminated, truncated = False, False
         while not (predicted_terminated or truncated):
         # inference
             start_time = time.time()
+            
             # only for diffusion policy
             raw_actions, actions = model.step(env, obs_image, instruction) # actually only env is needed
+            # actions: [B, 10]
             timers["inference"] += time.time() - start_time
+
+            # print("???:", actions.shape)
 
             actions_list = []
             if args.model == "diffusion_policy":
-                for i in range(10): # dp generate 8
+                for i in range(20): # dp generate 8
                     B = actions.shape[0] # B indicates the environment number
                     action = actions[:,i,:] # [B, 10]
+                    # print("unprocess action:", action)
                     mat_6 = action[:,3:9].reshape(action.shape[0],3,2) # [B ,3, 2]
                     mat_6[:, :, 0] = mat_6[:, :, 0] / np.linalg.norm(mat_6[:, :, 0]) # [B, 3]
                     mat_6[:, :, 1] = mat_6[:, :, 1] / np.linalg.norm(mat_6[:, :, 1]) # [B, 3]
@@ -219,14 +229,33 @@ def main():
                 else:
                     pose_action = actions # [B ,7]
                 actions_list.append(pose_action)
+            
+            # save_dir = "./debug/data3.npy"
+            # os.makedirs("./debug", exist_ok=True)
+            
+            # obs = env.get_obs()
+            # image_list = []
+            # for cam in ['3rd_view_camera', 'hand_camera']:
+            #     image_list.append(obs['sensor_data'][cam]['rgb'].to(torch.uint8).cpu().numpy())
+            
+            # np.save(save_dir, {
+            #     "raw_actions": actions,
+            #     "actions": np.array(actions_list),
+            #     "image_data": np.array(image_list),
+            # })
+            # debug_cnt += 1
+            # if debug_cnt >= 5:
+            #     exit(0)
 
+            action_log.append(actions_list)
             for i in range(len(actions_list)):
                 # step
+                print("actions_list %d:" % i, actions_list[i])
                 start_time = time.time()
                 action = actions_list[i]
+                total_action_list.append(action)
                 obs, reward, terminated, truncated, info = env.step(action)
-                breakpoint()
-                print(f"step {elapsed_steps} ee_pose_action:", action)
+                # print(f"step {elapsed_steps} ee_pose_action:", action)
                 obs_image_new = obs["sensor_data"]["3rd_view_camera"]["rgb"].to(torch.uint8)
                 obs_image_wrist_new = obs["sensor_data"]["hand_camera"]["rgb"].to(torch.uint8)
                 info = {k: v.cpu().numpy() for k, v in info.items()}
@@ -251,6 +280,7 @@ def main():
                 obs_image = obs_image_new
                 obs_image_wrist = obs_image_wrist_new
                 elapsed_steps += 1
+                
 
         # data dump: last image
         for i in range(args.num_envs):
@@ -259,7 +289,22 @@ def main():
             datas[i]["image"].append(log_image)
             datas[i]["image_wrist"].append(log_image_wrist)
 
+        # # save action
+        # save_dir = "./debug/action.npy"
+        # os.makedirs(os.path.dirname(save_dir), exist_ok=True)
+        # np.save(save_dir, {
+        #     "total_action_list": np.array(total_action_list),
+        # })
+
+
+        save_dir = "./debug/action.npy"
+        os.makedirs(os.path.dirname(save_dir), exist_ok=True)
+        np.save(save_dir, {
+            "action_log": np.array(action_log),
+        })
+
         # save video
+
         if args.save_video:
             if args.container_name != None and args.object_name != None:
                 temp_name = f"put_{args.object_name}_on_{args.container_name}"
@@ -310,6 +355,8 @@ def main():
             print(f"{k}: {np.mean(eval_metrics[k])}")
 
         eps_count += args.num_envs
+
+
 
     # Print timing information
     timers["total"] = time.time() - total_start_time
